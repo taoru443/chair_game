@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://unpkg.com/vuetify@3.0.0-beta.3/dist/vuetify.css" rel="stylesheet">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+    <style>
+        .shake {
+            animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+            transform: translate3d(0, 0, 0);
+        }
+        @keyframes shake {
+            10%, 90% {
+                transform: translate3d(-1px, 0, 0);
+            }
+            20%, 80% {
+                transform: translate3d(2px, 0, 0);
+            }
+            30%, 50%, 70% {
+                transform: translate3d(-4px, 0, 0);
+            }
+            40%, 60% {
+                transform: translate3d(4px, 0, 0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div id="app">
+    <v-app id="inspire" :class="{'shake':animated}">
+        <v-main>
+            <template v-if="!isPlaying">
+                <v-col cols="12" v-if="points[0].length > 0">
+                    <table class="ma-2">
+                        <tbody>
+                        <tr v-for="(point, index) in points" :key="'tr'+index">
+                            <td class="border primary">{{ index == 0 ? '先攻' : '後攻' }}</td>
+                            <td class="border primary text-center" v-for="(p, i) in point" :key="'tr'+index+'_'+i">
+                                <v-icon v-if="p == 0" icon="mdi-bomb"></v-icon>
+                                <span v-else>{{ p }}</span>
+                            </td>
+                        </tr>
+                        <tr></tr>
+                        <tr>
+                            <td class="border primary text-center" v-for="(p, i) in endScore" :key="'score_'+i">
+                                {{ p }}
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </v-col>
+                <v-row class="h-100" justify="center" align-content="center">
+                    <v-col class="text-center">
+                        <v-btn size="x-large" @click="start()">スタート</v-btn>
+                    </v-col>
+                </v-row>
+            </template>
+            <template v-else>
+                <v-row>
+                    <v-col cols="12">
+                        <table class="ma-2">
+                            <tbody>
+                            <tr v-for="(point, index) in points" :key="'tr'+index">
+                                <td class="border primary">{{ index == 0 ? '先攻' : '後攻' }}</td>
+                                <td class="border primary text-center" v-for="(p, i) in point" :key="'tr'+index+'_'+i">
+                                    <v-icon v-if="p == 0" icon="mdi-bomb"></v-icon>
+                                    <span v-else>{{ p }}</span>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </v-col>
+                    <v-col cols="12" class="text-center">
+                        <v-card
+                                class="mx-auto my-8"
+                                elevation="16"
+                                max-width="344"
+                        >
+                            <p>{{ label }}</p>
+                        </v-card>
+                    </v-col>
+                    <v-col v-for="no in chairNo" :key="no">
+                        <v-btn size="x-large" @click="selectChair(no)">{{ no }}</v-btn>
+                    </v-col>
+                </v-row>
+            </template>
+        </v-main>
+    </v-app>
+</div>
+
+<script src="https://unpkg.com/vue"></script>
+<script src="https://unpkg.com/vuetify@3.0.0-beta.3/dist/vuetify.js"></script>
+<script>
+    vuetify = Vuetify.createVuetify({
+        theme: {
+            defaultTheme: 'dark'
+        }
+    });
+    const option = {
+        data() {
+            return {
+                isPlaying: false,
+                animated: false,
+                target: 0,
+                selectNo: -1,
+                chairNo: [],
+                points: [[],[]],
+                endScore: [],
+            };
+        },
+        methods: {
+            start() {
+                this.points = [[],[]];
+
+                this.chairNo = [];
+                for(let i = 1; i <= 12; i++) {
+                    this.chairNo.push(i);
+                }
+                this.target = 0;
+                this.selectNo = -1;
+                this.isPlaying = true;
+            },
+            selectChair(no) {
+                if (this.selectNo > 0) {
+                    let point = 0;
+                    if (this.selectNo === no) {
+                        // ビリビリ
+                        self.animated = true
+                    } else {
+                        // ポイント取得
+                        point = no;
+                        // 椅子を消す
+                        const index = this.chairNo.indexOf(no);
+                        this.chairNo.splice(index, 1);
+                    }
+
+                    this.points[this.target].push(point);
+
+                    if (this.checkEnd()) {
+                        let diff = 0;
+                        this.endScore = [];
+                        for (const index in this.points) {
+                            let score = 0;
+                            for (let i = this.points[index].length - 1; i >= 0; i--) {
+                                if (this.points[index][i] == 0) break;
+                                score += this.points[index][i];
+                            }
+                            this.endScore.push(score);
+                            diff += (index == 0) ? score : -1 * score;
+                        }
+                        console.log(this.endScore);
+                        if (diff === 0) {
+                            let count = this.points[0].filter(n => n === 0).length;
+                            diff = (count >= 3) ? -1 : 1;
+                        }
+
+                        alert(diff > 0 ? '先攻の勝ち' : '後攻の勝ち');
+                        this.isPlaying = false;
+                    } else {
+                        self.animated = false;
+                        this.target = (this.target + 1) % 2;
+                        this.selectNo = -1;
+                    }
+                } else {
+                    this.selectNo = no;
+                }
+            },
+            checkEnd() {
+                if (this.chairNo.length < 2) {
+                    return true;
+                }
+                for (const point of this.points) {
+                    let count = point.filter(n => n === 0).length;
+                    if (count >= 3) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        },
+        computed: {
+            label() {
+                if (this.selectNo > 0) {
+                    return "座る場所を選んでください。";
+                } else {
+                    return "ビリビリを設置する場所を選んでください。";
+                }
+            }
+        }
+    };
+
+
+    app = Vue.createApp(option);
+    app.use(vuetify);
+    app.mount("#app");
+</script>
+</body>
+
+</html>
